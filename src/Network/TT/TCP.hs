@@ -10,38 +10,41 @@ import qualified Data.ByteString as BS
 
 import Data.Time.Clock.POSIX
 
-import Network.Socket
-import Network.Socket.ByteString
+import qualified Network.Socket            as N
+import qualified Network.Socket.ByteString as N
 
-getAI :: AddrInfo -> HostName -> Int -> IO AddrInfo
+openSocket :: N.AddrInfo -> IO N.Socket
+openSocket addr = N.socket (N.addrFamily addr) (N.addrSocketType addr) (N.addrProtocol addr)
+
+getAI :: N.AddrInfo -> N.HostName -> Int -> IO N.AddrInfo
 getAI hints h p = do
-    ais <- getAddrInfo (Just hints) (Just h) (Just (show p))
+    ais <- N.getAddrInfo (Just hints) (Just h) (Just (show p))
     case ais of
         [] -> error "getAddrInfo failed"
         (ai:_) -> pure ai
 
 tcpServer :: String -> Int -> IO ()
 tcpServer h p = do
-    let hints = defaultHints {
-            addrFamily = AF_INET
-          , addrSocketType = Stream
+    let hints = N.defaultHints {
+            N.addrFamily = N.AF_INET
+          , N.addrSocketType = N.Stream
           }
     ai <- getAI hints h p
     s <- openSocket ai
-    setSocketOption s ReuseAddr 1
-    bind s $ addrAddress ai
-    listen s 1024
+    N.setSocketOption s N.ReuseAddr 1
+    N.bind s $ N.addrAddress ai
+    N.listen s 1024
     forever $ do
-        (cs, ca) <- accept s
+        (cs, ca) <- N.accept s
         print ca
         forkIO $ tcpServerWorker cs
 
 -- Just gobble up all the bytes without doing anything.
-tcpServerWorker :: Socket -> IO ()
+tcpServerWorker :: N.Socket -> IO ()
 tcpServerWorker s = do
-    bs <- recv s 1000000
+    bs <- N.recv s 1000000
     if BS.null bs
-    then close s
+    then N.close s
     else tcpServerWorker s
 
 data TCPResults = TCPResults {
@@ -51,24 +54,24 @@ data TCPResults = TCPResults {
 
 tcpClient :: String -> Int -> Int -> IO TCPResults
 tcpClient h p cs = do
-    let hints = defaultHints {
-            addrFamily = AF_INET
-          , addrSocketType = Stream
+    let hints = N.defaultHints {
+            N.addrFamily = N.AF_INET
+          , N.addrSocketType = N.Stream
           }
         bs = BS.replicate cs 0xbe
     ai <- getAI hints h p
     s <- openSocket ai
-    connect s $ addrAddress ai
+    N.connect s $ N.addrAddress ai
     tb <- newTVarIO 0
     tl <- getPOSIXTime >>= newTVarIO
     forkIO $ tcpClientWorker bs s tb
     pure $ TCPResults tb tl
 
-tcpClientWorker :: BS.ByteString -> Socket -> TVar Integer -> IO ()
+tcpClientWorker :: BS.ByteString -> N.Socket -> TVar Integer -> IO ()
 tcpClientWorker bs s tb = 
     let ss = fromIntegral $ BS.length bs
     in forever $ do
-        sendAll s bs
+        N.sendAll s bs
         atomically $ modifyTVar' tb (+ss)
 
 tcpObs :: TCPResults -> IO Double
