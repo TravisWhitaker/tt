@@ -27,7 +27,7 @@ config = hsubparser $ mconcat
         )
     , command "tcp-client"
         (info optTcpClient
-            (fullDesc <> progDesc "UDP Test Client")
+            (fullDesc <> progDesc "TCP Test Client")
         )
     ]
 
