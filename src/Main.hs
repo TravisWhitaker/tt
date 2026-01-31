@@ -10,8 +10,8 @@ import Options.Applicative
 
 import Network.TT.TCP
 
-data Config = TCPServer String Int
-            | TCPClient String Int Int Int
+data Config = TCPServer String Int Int
+            | TCPClient String Int Int Int Int
 
 parseConfig :: ParserInfo Config
 parseConfig = info (config <**> helper) $ mconcat
@@ -32,11 +32,14 @@ config = hsubparser $ mconcat
     ]
 
 optTcpServer :: Parser Config
-optTcpServer = TCPServer <$> parseServerHost <*> parsePort
+optTcpServer = TCPServer <$> parseServerHost
+                         <*> parsePort
+                         <*> parsePayloadSize
 
 optTcpClient :: Parser Config
 optTcpClient = TCPClient <$> parseClientHost
                          <*> parsePort
+                         <*> parseNumCons
                          <*> parsePayloadSize
                          <*> parseSamplePeriod
 
@@ -58,6 +61,14 @@ parsePort = option auto $ mconcat
     , value 23456
     ]
 
+parseNumCons :: Parser Int
+parseNumCons = option auto $ mconcat
+    [ long "streams"
+    , short 's'
+    , help "Number of parallel connections."
+    , metavar "STREAM_COUNT"
+    ]
+
 parseClientHost :: Parser String
 parseClientHost = strOption $ mconcat
     [ long "host"
@@ -69,7 +80,7 @@ parseClientHost = strOption $ mconcat
 parsePayloadSize :: Parser Int
 parsePayloadSize = option auto $ mconcat
     [ long "chunk"
-    , short 's'
+    , short 'c'
     , help "Test payload chunk size."
     , metavar "CHUNK_SIZE"
     , value 1000000
@@ -92,9 +103,9 @@ printT t
     | otherwise = show t ++ " B/sec"
 
 runConfig :: Config -> IO ()
-runConfig (TCPServer h p) = tcpServer h p
-runConfig (TCPClient h p ps sp) = do
-    tr <- tcpClient h p ps
+runConfig (TCPServer h p c) = tcpServer h p c
+runConfig (TCPClient h p ncs ps sp) = do
+    tr <- tcpClients ncs h p ps
     forever $ do
         threadDelay (sp * 1000000)
         t <- tcpObs tr
