@@ -1,11 +1,11 @@
 let p = builtins.fetchGit
     {
-        url = "https://github.com/NixOS/nixpkgs";
-        ref = "master";
-        rev = "c97c47f2bac4fa59e2cbdeba289686ae615f8ed4";
+      url = "https://github.com/nixos/nixpkgs";
+      ref = "master";
+      rev = "eda1d4afa803c2d26cb820328cd9981556f9e448";
     };
 in with import p {};
-let hs = haskell.packages.ghc9122.ghcWithPackages
+let hs = haskell.packages.ghc9103.ghcWithPackages
     (p: with p; [cabal-install haskell-language-server]);
 in mkShell
 {
